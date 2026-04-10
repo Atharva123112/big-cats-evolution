@@ -4,7 +4,7 @@
 ## Project Overview
 This project maps the evolutionary lineage of big cats (Lion, Tiger, Leopard, Jaguar, and Cheetah) using mitochondrial DNA. It features a complete computational biology pipeline, from fetching raw genomic data via API to rendering a custom, interactive phylogenetic tree in the browser.
 
-🔗 **[Click here to view the interactive web visualization!]([Put-Your-GitHub-Pages-Link-Here](https://atharva123112.github.io/big-cats-evolution/))**
+🔗 **[Click here to view the interactive web visualization!]([https://atharva123112.github.io/big-cats-evolution/])**
 
 ## The Tech Stack
 * **Data Retrieval & Processing:** Python, Biopython (`Entrez` API)
