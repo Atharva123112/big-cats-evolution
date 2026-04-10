@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evolutionary Tree of Big Cats</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #f1f5f9;       
+            --panel-bg: #ffffff;       
+            --primary-text: #1e293b;   
+            --secondary-text: #64748b; 
+            --accent-color: #0d9488;   
+            --border-color: #e2e8f0;
+        }
+
+        body { 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            background-color: var(--bg-color); 
+            color: var(--primary-text);
+            margin: 0; 
+            padding: 40px 20px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { margin: 0 0 10px 0; color: var(--primary-text); font-size: 2.2rem; }
+        .header p { margin: 0; color: var(--secondary-text); font-size: 1.1rem; }
+        .accent-text { color: var(--accent-color); font-weight: bold; }
+
+        .dashboard {
+            display: flex;
+            gap: 30px;
+            max-width: 1300px;
+            width: 100%;
+            justify-content: center;
+            align-items: stretch; 
+        }
+
+        #tree-container {
+            flex: 2; 
+            min-width: 750px;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+            padding: 20px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .info-panel {
+            flex: 1; 
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .fact-card {
+            background-color: #f8fafc;
+            border-left: 4px solid var(--accent-color);
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+        }
+        .fact-card h3 { margin: 0 0 8px 0; font-size: 1.1rem; color: var(--primary-text); }
+        .fact-card p { margin: 0; font-size: 0.95rem; color: var(--secondary-text); line-height: 1.5; }
+
+        .node { cursor: pointer; pointer-events: all; }
+        .node text { font: 14px sans-serif; fill: var(--primary-text); font-weight: 600; }
+        .link { fill: none; stroke: #cbd5e1; stroke-width: 2px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Evolutionary Divergence of the <span class="accent-text">Panthera</span> Genus</h1>
+        <p>Interactive Mitochondrial DNA Analysis visualized with D3.js</p>
+    </div>
+    
+    <div class="dashboard">
+        <div id="tree-container"></div>
+
+        <div class="info-panel">
+            <h2>Genomic Insights</h2>
+            
+            <div class="fact-card">
+                <h3>🧬 Why Mitochondrial DNA?</h3>
+                <p>Unlike nuclear DNA, which recombines from both parents, Mitochondrial DNA (mtDNA) is inherited strictly maternally. This allows computational biologists to trace unbroken, direct evolutionary lineages without the noise of genetic mixing.</p>
+            </div>
+
+            <div class="fact-card" style="border-left-color: #e11d48;">
+                <h3>⚠️ The Outgroup Anomaly</h3>
+                <p>Biologically, the Cheetah is the true outgroup here. However, look at the base of our tree (Inner4)—the algorithm placed the <b>Lion</b> as the outgroup! This happens because UPGMA assumes a constant mutation rate. If the Lion's mtDNA mutated slightly faster or slower, the algorithm gets tripped up. This proves why data scientists test multiple models!</p>
+            </div>
+
+            <div class="fact-card">
+                <h3>⏱️ The UPGMA Algorithm</h3>
+                <p>This tree was calculated using UPGMA (Unweighted Pair Group Method with Arithmetic Mean). It is a rapid hierarchical clustering method used in bioinformatics to create phenograms based on pairwise distance matrices.</p>
+            </div>
+
+            <div class="fact-card" style="border-left-color: #f59e0b;">
+                <h3>🖱️ Interactive Nodes</h3>
+                <p>Click the orange ancestral nodes (Inner1, Inner2, etc.) to collapse and expand evolutionary branches in real-time. This dynamic scaling is critical when analyzing massive genomes with thousands of variations.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const newickData = "(((Jaguar:0.09619,(Cheetah:0.01411,(Leopard:0.00971,Tiger:0.00971)Inner1:0.00440)Inner2:0.08208)Inner3:0.37505,Lion:0.47124)Inner4:0.00000);";
+
+        function parseNewick(a) {
+            let ancestors = [];
+            let tree = {};
+            let tokens = a.split(/(;|\(|\)|,)/);
+            for (let i = 0; i < tokens.length; i++) {
+                let token = tokens[i];
+                switch (token) {
+                    case "(": let subtree = {}; tree.children = [subtree]; ancestors.push(tree); tree = subtree; break;
+                    case ",": let sibling = {}; ancestors[ancestors.length-1].children.push(sibling); tree = sibling; break;
+                    case ")": tree = ancestors.pop(); break;
+                    case ";": case "": break;
+                    default:
+                        let parts = token.split(":");
+                        tree.name = parts[0] || "";
+                        if(parts[1]) tree.length = parseFloat(parts[1]);
+                        break;
+                }
+            }
+            return tree;
+        }
+
+        // MASSIVELY increased the right margin to 220 to prevent text clipping
+        const margin = {top: 40, right: 220, bottom: 40, left: 80},
+              width = 800 - margin.left - margin.right,
+              height = 550 - margin.top - margin.bottom;
+
+        const svg = d3.select("#tree-container").append("svg")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .attr("viewBox", `0 0 ${width + margin.left + margin.right} ${height + margin.top + margin.bottom}`)
+            .append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const root = d3.hierarchy(parseNewick(newickData), d => d.children);
+        root.x0 = height / 2;
+        root.y0 = 0;
+
+        const treeLayout = d3.tree().size([height, width]);
+        let i = 0;
+
+        function update(source) {
+            const treeData = treeLayout(root);
+            const nodes = treeData.descendants();
+            const links = treeData.descendants().slice(1);
+
+            nodes.forEach(d => d.y = d.depth * 130); 
+
+            const node = svg.selectAll("g.node").data(nodes, d => d.id || (d.id = ++i));
+
+            const nodeEnter = node.enter().append("g")
+                .attr("class", "node")
+                .attr("transform", d => `translate(${source.y0},${source.x0})`)
+                .on("click", (event, d) => {
+                    if (d.children) { d._children = d.children; d.children = null; } 
+                    else { d.children = d._children; d._children = null; }
+                    update(d);
+                });
+
+            nodeEnter.append("circle")
+                .attr("r", 1e-6)
+                .style("stroke", "var(--primary-text)")
+                .style("stroke-width", "2.5px")
+                .style("fill", d => d._children ? "#f59e0b" : d.children ? "#ffffff" : "var(--accent-color)");
+
+            nodeEnter.append("text")
+                .attr("dy", ".35em")
+                .attr("x", d => d.children || d._children ? -13 : 13)
+                .attr("text-anchor", d => d.children || d._children ? "end" : "start")
+                .text(d => d.data.name);
+
+            const nodeUpdate = nodeEnter.merge(node);
+            nodeUpdate.transition().duration(500).attr("transform", d => `translate(${d.y},${d.x})`);
+
+            nodeUpdate.select("circle").attr("r", 7)
+                .style("fill", d => d._children ? "#f59e0b" : d.children ? "#ffffff" : "var(--accent-color)");
+
+            const nodeExit = node.exit().transition().duration(500)
+                .attr("transform", d => `translate(${source.y},${source.x})`).remove();
+            nodeExit.select("circle").attr("r", 1e-6);
+
+            const diagonal = (s, d) => `M ${s.y} ${s.x} L ${s.y} ${d.x} L ${d.y} ${d.x}`;
+            const link = svg.selectAll("path.link").data(links, d => d.id);
+            const linkEnter = link.enter().insert("path", "g").attr("class", "link")
+                .attr("d", d => { const o = {x: source.x0, y: source.y0}; return diagonal(o, o); });
+            const linkUpdate = linkEnter.merge(link);
+            linkUpdate.transition().duration(500).attr("d", d => diagonal(d.parent, d));
+            const linkExit = link.exit().transition().duration(500)
+                .attr("d", d => { const o = {x: source.x, y: source.y}; return diagonal(o, o); }).remove();
+
+            nodes.forEach(d => { d.x0 = d.x; d.y0 = d.y; });
+        }
+
+        update(root);
+    </script>
+</body>
+</html>
